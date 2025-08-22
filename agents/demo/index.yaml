@@ -1,6 +1,11 @@
 name: Demo
 description: An AI agent that demonstrates agent capabilities
 version: 0.1.0
+mcp: true
+mcp_tools:
+  - github
+  - sqlite
+  - git
 instructions: |
   You are a AI agent designed to demonstrate agent capabilities.
 

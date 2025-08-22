@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
+readarray -t mcp_enabled_agents < <(find . -type f -name index.yaml -exec sh -c 'yq --exit-status ".mcp_tools | length != 0" "$1" > /dev/null 2>&1 && dirname "$1"' _ {} \;)
 ROOT_DIR="$(cd -- "$( dirname -- "${BASH_SOURCE[0]}" )/.." &> /dev/null && pwd)"
 BIN_DIR="$ROOT_DIR/bin"
 MCP_DIR="$ROOT_DIR/cache/__mcp__"
@@ -115,6 +116,22 @@ merge-functions() {
     else
         printf "%s" "$result"
     fi
+
+    for agent in "${mcp_enabled_agents[@]}"; do
+        if [[ -f "${agent}/functions.json" ]]; then
+            tool_json="$(jq '.' "${agent}/functions.json")"
+            rm -f "${agent}/functions.json"
+        else
+            tool_json='[]'
+        fi
+
+        mcp_function_prefixes="$(yq -o json '.mcp_tools' "${agent}/index.yaml")"
+
+        jq -s 'add | unique' \
+            <(jq '.' <<< "$tool_json") \
+            <(jq --argjson prefixes "$mcp_function_prefixes" 'map(select(.name as $s | $prefixes | any(. as $p | $s | startswith($p))))' "$FUNCTIONS_JSON_PATH") \
+            >> "${agent}/functions.json"
+    done
 }
 
 # @cmd Unmerge mcp tools from functions.json
@@ -130,6 +147,20 @@ recovery-functions() {
     else
         printf "%s" "$result"
     fi
+
+    for agent in "${mcp_enabled_agents[@]}"; do
+        if [[ -f "${agent}/functions.json" ]]; then
+            tool_json="$(jq '.' "${agent}/functions.json")"
+            rm -f "${agent}/functions.json"
+        else
+            tool_json='[]'
+        fi
+
+        mcp_function_prefixes="$(yq -o json '.mcp_tools' "${agent}/index.yaml")"
+
+        jq --argjson prefixes "$mcp_function_prefixes" 'map(select(.name as $s | $prefixes | any(. as $p | $s | startswith($p))| not))' <<< "$tool_json" \
+        >> "${agent}/functions.json"
+    done
 }
 
 # @cmd Generate function declarations for the mcp tools
