@@ -129,7 +129,7 @@ merge-functions() {
 
         jq -s 'add | unique' \
             <(jq '.' <<< "$tool_json") \
-            <(jq --argjson prefixes "$mcp_function_prefixes" 'map(select(.name as $s | $prefixes | any(. as $p | $s | startswith($p))))' "$FUNCTIONS_JSON_PATH") \
+            <(jq --argjson prefixes "$mcp_function_prefixes" 'map(select(.mcp as $mcp | $prefixes | index($mcp)))' "$FUNCTIONS_JSON_PATH") \
             >> "${agent}/functions.json"
     done
 }
